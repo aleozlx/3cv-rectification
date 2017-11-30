@@ -8,7 +8,6 @@ import numpy as np
 # im = cv2.imread('a.png')
 im = io.imread('a.png')
 
-
 def add_point(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONUP:
         print('add_point({}, {})'.format(x, y), file = sys.stderr)
@@ -41,18 +40,10 @@ def line_intersection(line1, line2):
     return x, y
 
 def scale(A, s):
-    ret = A.copy()
-    ret[0,0] *= s
-    ret[1,1] *= s
-    return ret
+    return np.dot(np.diag([s,s,1]), A)
 
 def translate(A, x, y):
-    ret = A.copy()
-    ret[0,2] += x
-    ret[1,2] += y
-    print('H =', ret)
-    return ret
-
+    return np.dot(np.column_stack([[1,0,0], [0,1,0], [x,y,1]]), A)
 
 v1 = np.array(line_intersection([points[0], points[1]], [points[2], points[3]]) + (1,))
 v2 = np.array(line_intersection([points[0], points[2]], [points[1], points[3]]) + (1,))
@@ -67,14 +58,38 @@ print('<r1 r2>', np.dot(r1, r2))
 R = np.column_stack([r1, r2, r3])
 print('det(R) =', np.linalg.det(R))
 H = np.dot(K, np.dot(np.linalg.inv(R), np.linalg.inv(K)))
-# H = np.dot(K, np.dot(R, np.linalg.inv(K)))
-# H[2,0] = H[2,1] = 0
 print('(H) =', H)
 def showRectified(H, idx):
+    print(_scale, x_offset, y_offset)
     imOut = cv2.warpPerspective(im, H, (1024,768))
     cv2.imshow('output%d'%idx, imOut)
 
-# showRectified(translate(scale(H, 0.5), -1200, 100), 0)
-showRectified(translate(scale(H, 0.5), -1200, -100), 1)
-# showRectified(translate(scale(H, 0.5), -1200, -200), 2)
+_scale = 0.13
+x_offset = -160
+y_offset = 100
+showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+
+while 1:
+    key = cv2.waitKey(33)
+    if key == ord('w'):
+        y_offset += 20
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('s'):
+        y_offset -= 20
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('a'):
+        x_offset -= 20
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('d'):
+        x_offset += 20
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('='):
+        _scale += 0.03
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('-'):
+        _scale -= 0.03
+        showRectified(translate(scale(H, _scale), x_offset, y_offset), 1)
+    elif key == ord('\x1B'):
+        sys.exit()
+
 cv2.waitKey(0)
